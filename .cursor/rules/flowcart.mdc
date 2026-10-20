@@ -1,0 +1,16 @@
+---
+description: FlowCart AI engineering rules
+globs:
+alwaysApply: true
+---
+
+# FlowCart AI Rules
+
+- Never replace real functionality with mocks just to make the application appear complete.
+- Domain logic must not depend on Spring or JPA annotations on aggregates.
+- Use BigDecimal / Money for monetary values — never floating point for money.
+- Inventory invariants: available_qty >= 0, successful reservations never oversell.
+- A feature is complete only when acceptance criteria are verified with real tests or smoke checks.
+- Prefer modular monolith packages first; do not create empty microservice shells.
+- Keep docs/PROGRESS.md honest: COMPLETED / IN PROGRESS / BLOCKED / NEXT.
+- AI / RAG / Chaos features must wait until commerce domain (M0–M2) is stable.

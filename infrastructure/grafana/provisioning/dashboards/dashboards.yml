@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: FlowCart
+    folder: FlowCart
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

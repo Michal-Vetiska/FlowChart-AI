@@ -1,0 +1,94 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: flowcart-postgres
+    profiles: ["core", "messaging", "observability", "ai", "full"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-flowcart}
+      POSTGRES_USER: ${POSTGRES_USER:-flowcart}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowcart}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - flowcart_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flowcart} -d ${POSTGRES_DB:-flowcart}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: flowcart-rabbitmq
+    profiles: ["messaging", "full"]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-flowcart}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-flowcart}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: flowcart-prometheus
+    profiles: ["observability", "full"]
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: flowcart-loki
+    profiles: ["observability", "full"]
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "3100:3100"
+
+  tempo:
+    image: grafana/tempo:2.7.1
+    container_name: flowcart-tempo
+    profiles: ["observability", "full"]
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./infrastructure/otel/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    ports:
+      - "3200:3200"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.120.0
+    container_name: flowcart-otel-collector
+    profiles: ["observability", "full"]
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./infrastructure/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - tempo
+      - prometheus
+      - loki
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: flowcart-grafana
+    profiles: ["observability", "full"]
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: flowcart
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  flowcart_pg_data:

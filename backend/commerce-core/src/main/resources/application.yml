@@ -1,0 +1,110 @@
+spring:
+  application:
+    name: commerce-core
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/flowcart}
+    username: ${SPRING_DATASOURCE_USERNAME:flowcart}
+    password: ${SPRING_DATASOURCE_PASSWORD:flowcart}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${OTEL_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    root: INFO
+    com.flowcart: INFO
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-},%X{correlationId:-}]"
+
+flowcart:
+  security:
+    jwt-secret: ${FLOWCART_JWT_SECRET:flowcart-demo-secret-key-32bytes!!}
+  ordering:
+    mode: ${FLOWCART_ORDERING_MODE:sync}
+  messaging:
+    mode: ${FLOWCART_MESSAGING_MODE:in-memory}
+    publish-after-commit: true
+    outbox-poll-ms: 1000
+  chaos:
+    enabled: ${FLOWCART_CHAOS_ENABLED:true}
+  ai:
+    embedding-mode: ${FLOWCART_AI_EMBEDDING_MODE:hash}
+  demo:
+    seed-on-startup: ${FLOWCART_DEMO_SEED:false}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+logging:
+  level:
+    com.flowcart: DEBUG
+
+flowcart:
+  demo:
+    seed-on-startup: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: saga
+
+flowcart:
+  ordering:
+    mode: saga
+  messaging:
+    mode: in-memory
+    publish-after-commit: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: observability
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0

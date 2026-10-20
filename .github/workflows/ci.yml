@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: Backend tests (AI stubs / hash embeddings)
+        working-directory: backend/commerce-core
+        run: ./gradlew test --no-daemon
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          FLOWCART_AI_EMBEDDING_MODE: hash
+          FLOWCART_CHAOS_ENABLED: "true"
+          FLOWCART_DEMO_SEED: "false"
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/admin-dashboard/package-lock.json
+      - name: Install & build
+        working-directory: apps/admin-dashboard
+        run: |
+          npm ci
+          npm run build
